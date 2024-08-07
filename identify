@@ -1,0 +1,89 @@
+How to identify long running queries.
+
+	1) Using oracle database data dictionary views.
+
+• V$SESSION: Provides information about the currently active sessions in the database.
+• V$SQL: Contains information about SQL statements in the shared pool.
+
+SELECT
+    s.sid,
+    s.serial#,
+    s.username,
+    s.status,
+    s.sql_id,
+    s.last_call_et,
+    q.sql_text
+FROM
+    v$session s
+JOIN
+    v$sql q ON s.sql_id = q.sql_id
+WHERE
+    s.status = 'ACTIVE'
+    AND s.last_call_et > 600  -- Queries running longer than 10 minutes
+ORDER BY
+    s.last_call_et DESC;
+
+
+	2) V$session_longops - V$SESSION_LONGOPS: Provides information about long operations (e.g., full table scans, index creation).
+
+SELECT
+    sid,
+    serial#,
+    opname,
+    start_time,
+    sofar,
+    totalwork,
+    (sofar/totalwork)*100 AS pct_complete
+FROM
+    v$session_longops
+WHERE
+    totalwork > 0
+    AND opname NOT LIKE 'INDEX%'
+ORDER BY
+    start_time;
+
+	3) OEM performacne pages.
+	4) AWR reports - AWR captures database performance data over time. You can generate an AWR report to analyze SQL performance and identify long-running queries.
+	5) Using SQL Trace and TKPROF
+	6) SQL Trace: Enable SQL tracing for specific sessions or the entire database to capture detailed execution information.
+-- Enable SQL Trace for a specific session
+ALTER SESSION SET sql_trace = TRUE;
+
+-- After running your queries, disable SQL Trace
+ALTER SESSION SET sql_trace = FALSE;
+
+
+TKPROF: Use TKPROF to format the trace file and analyze the performance of SQL statements.
+
+SQL Monitoring: For queries running in real-time, you can use the V$SQL_MONITOR view to track their progress.
+
+SELECT
+    sql_id,
+    sql_text,
+    status,
+    elapsed_time,
+    cpu_time,
+    buffer_gets,
+    disk_reads,
+    rows_processed
+FROM
+    v$sql_monitor
+WHERE
+    status = 'EXECUTING'
+ORDER BY
+    elapsed_time DESC;
+
+6. Using SQL Performance Analyzer
+	• SQL Performance Analyzer (SPA): Part of Oracle’s SQL Tuning Suite, it helps in assessing SQL performance and detecting long-running queries.
+7. Using Oracle’s DBMS_XPLAN Package
+
+	• DBMS_XPLAN: Use this package to get execution plans of running queries, which can provide insights into why a query is running long.
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY_CURSOR(NULL, NULL, 'ALLSTATS LAST'));
+
+oracle database performance analyzers
+
+
+
+
+
